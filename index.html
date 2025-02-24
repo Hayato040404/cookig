@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>クッキングシミュレーターWeb - レストラン版</title>
+    <title>Cooking Simulator Re:make</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Arial', sans-serif; }
+        body { margin: 0; overflow: hidden; font-family: Arial; }
         canvas { width: 100%; height: 100%; }
         #startScreen, #helpScreen, #orderScreen, #businessScreen, #shopScreen {
             position: absolute;
@@ -13,13 +13,12 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            color: #fff;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            font-size: 18px;
         }
         #helpScreen, #orderScreen, #businessScreen, #shopScreen { display: none; }
         #orderList, #shopList {
@@ -35,23 +34,20 @@
             position: absolute;
             top: 10px;
             left: 10px;
-            color: #fff;
+            color: white;
             background: rgba(0, 0, 0, 0.7);
             padding: 10px;
             border-radius: 5px;
-            font-size: 16px;
-            font-weight: bold;
         }
         #targetInfo {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -60%);
-            color: #fff;
+            color: white;
             background: rgba(0, 0, 0, 0.5);
-            padding: 8px;
+            padding: 5px;
             border-radius: 3px;
-            font-size: 18px;
         }
         #controls {
             position: absolute;
@@ -100,137 +96,107 @@
         #crosshair::before { width: 2px; height: 20px; left: 9px; }
         #crosshair::after { width: 20px; height: 2px; top: 9px; }
         button {
-            padding: 10px 20px;
+            padding: 8px 16px;
             margin: 5px;
-            font-size: 16px;
-            background: #4a4a4a;
+            font-size: 14px;
+            background: #444;
             color: white;
-            border: 2px solid #fff;
-            border-radius: 8px;
+            border: none;
+            border-radius: 5px;
             cursor: pointer;
-            min-width: 120px;
-            transition: background 0.3s;
+            min-width: 100px;
         }
-        button:hover { background: #6a6a6a; }
+        button:hover { background: #666; }
     </style>
 </head>
 <body>
     <div id="startScreen">
-        <h1>クッキングシミュレーターWeb - レストラン版</h1>
-        <button onclick="startGame(true, 'sandbox')">サンドボックス (通常)</button>
-        <button onclick="startGame(false, 'sandbox')">サンドボックス (軽量)</button>
-        <button onclick="startGame(true, 'business')">営業 (通常)</button>
-        <button onclick="startGame(false, 'business')">営業 (軽量)</button>
-        <button onclick="startGame(true, 'superFree')">超自由モード (通常)</button>
-        <button onclick="startGame(false, 'superFree')">超自由モード (軽量)</button>
-        <button onclick="showHelp()">ヘルプ</button>
+        <h1>Cooking Simulator Re:make</h1>
+        <button onclick="startGame(true, 'sandbox')">Sandbox (Normal)</button>
+        <button onclick="startGame(false, 'sandbox')">Sandbox (Lite)</button>
+        <button onclick="startGame(true, 'business')">Business (Normal)</button>
+        <button onclick="startGame(false, 'business')">Business (Lite)</button>
+        <button onclick="showHelp()">Help</button>
     </div>
     <div id="helpScreen">
-        <h1>ヘルプ</h1>
+        <h1>Help</h1>
         <p><b>操作方法:</b></p>
-        <p>PC: WASDで移動、マウスで視点変更、ボタンで操作</p>
+        <p>PC: WASDで移動、マウスドラッグで視点変更、ボタンで操作</p>
         <p>モバイル: ジョイスティックで移動、スワイプで視点変更、ボタンで操作</p>
-        <p><b>共通の調理方法:</b></p>
-        <p>1. "注文"で食材や器具を注文します</p>
-        <p>2. "手に持つ"で選び、"置く"で配置します</p>
-        <p>3. "使う"で調理:</p>
-        <p>   - ナイフ: 調理台の食材を切ります</p>
-        <p>   - ミキサー: 食材を混ぜます</p>
-        <p>   - 冷蔵庫: 開閉します</p>
-        <p>4. 調理器具に食材を置くと自動で調理開始（2秒待つ、焦げ注意！）</p>
-        <p>5. "置く"でお皿に盛り付け、"出す"で評価します</p>
+        <p><b>調理方法 (共通):</b></p>
+        <p>1. "Order"で食材や器具を注文（モバイルはスワイプでスクロール）</p>
+        <p>2. "Pick"で手に持つ、"Place"でおく</p>
+        <p>3. 包丁で切る: 食材に近づける</p>
+        <p>4. 焼く/加熱: フライパン、コンロ、電子レンジに置く</p>
+        <p>5. 洗う: シンクに置く</p>
+        <p>6. 盛り付け: 調理台や皿に置く</p>
+        <p>7. "Serve"でお客に出す</p>
         <p><b>モード:</b></p>
-        <p>サンドボックス: レシピを自由に試せます</p>
-        <p>営業: お客さんの注文を満たしてお金を稼ぎます（3分以内）</p>
-        <p>超自由モード: レストランを自由にカスタマイズ、失敗を楽しめます</p>
-        <p>通常: エフェクトとサウンドあり</p>
-        <p>軽量: エフェクトとサウンドなし</p>
-        <button onclick="hideHelp()">戻る</button>
+        <p>Sandbox: 自由に調理（レシピで高評価、変な料理もOK）</p>
+        <p>Business: お客の注文を満たし、お金を稼ぐ（壁のボードを確認、3分以内）</p>
+        <p>Normal: エフェクトとサウンドあり</p>
+        <p>Lite: エフェクトとサウンドなし（軽量）</p>
+        <p><b>ショップ:</b> "Shop"で稼いだお金を使い、キッチンをアップグレード</p>
+        <button onclick="hideHelp()">Back</button>
     </div>
     <div id="orderScreen">
-        <h1>食材と器具を注文</h1>
+        <h1>Order Items</h1>
         <div id="orderList">
-            <button onclick="orderIngredient('carrot')">ニンジン</button>
-            <button onclick="orderIngredient('tomato')">トマト</button>
-            <button onclick="orderIngredient('meat')">肉</button>
-            <button onclick="orderIngredient('potato')">ジャガイモ</button>
-            <button onclick="orderIngredient('onion')">タマネギ</button>
-            <button onclick="orderIngredient('fish')">魚</button>
-            <button onclick="orderIngredient('cheese')">チーズ</button>
-            <button onclick="orderIngredient('bread')">パン</button>
-            <button onclick="orderIngredient('egg')">卵</button>
-            <button onclick="orderIngredient('butter')">バター</button>
-            <button onclick="orderIngredient('salt')">塩</button>
-            <button onclick="orderIngredient('detergent')">洗剤</button>
-            <button onclick="orderIngredient('rice')">米</button>
-            <button onclick="orderIngredient('tofu')">豆腐</button>
-            <button onclick="orderIngredient('pasta')">パスタ</button>
-            <button onclick="orderIngredient('milk')">牛乳</button>
-            <button onclick="orderIngredient('sugar')">砂糖</button>
-            <button onclick="orderIngredient('oil')">油</button>
-            <button onclick="orderIngredient('chicken')">鶏肉</button>
-            <button onclick="orderIngredient('pepper')">ピーマン</button>
-            <button onclick="orderIngredient('garlic')">ニンニク</button>
-            <button onclick="orderIngredient('flour')">小麦粉</button>
-            <button onclick="orderIngredient('cream')">クリーム</button>
-            <button onclick="orderIngredient('knife')">包丁</button>
-            <button onclick="orderIngredient('pan')">フライパン</button>
-            <button onclick="orderIngredient('stove')">コンロ</button>
-            <button onclick="orderIngredient('microwave')">電子レンジ</button>
-            <button onclick="orderIngredient('sink')">シンク</button>
-            <button onclick="orderIngredient('counter')">調理台</button>
-            <button onclick="orderIngredient('plate')">皿</button>
-            <button onclick="orderIngredient('oven')">オーブン</button>
-            <button onclick="orderIngredient('pot')">鍋</button>
-            <button onclick="orderIngredient('mixer')">ミキサー</button>
-            <button onclick="orderIngredient('chair')">椅子</button>
-            <button onclick="orderIngredient('table')">テーブル</button>
+            <button onclick="orderIngredient('carrot')">Carrot</button>
+            <button onclick="orderIngredient('tomato')">Tomato</button>
+            <button onclick="orderIngredient('meat')">Meat</button>
+            <button onclick="orderIngredient('potato')">Potato</button>
+            <button onclick="orderIngredient('onion')">Onion</button>
+            <button onclick="orderIngredient('fish')">Fish</button>
+            <button onclick="orderIngredient('cheese')">Cheese</button>
+            <button onclick="orderIngredient('bread')">Bread</button>
+            <button onclick="orderIngredient('egg')">Egg</button>
+            <button onclick="orderIngredient('butter')">Butter</button>
+            <button onclick="orderIngredient('salt')">Salt</button>
+            <button onclick="orderIngredient('detergent')">Detergent</button>
+            <button onclick="orderIngredient('rice')">Rice</button>
+            <button onclick="orderIngredient('tofu')">Tofu</button>
+            <button onclick="orderIngredient('pasta')">Pasta</button>
+            <button onclick="orderIngredient('milk')">Milk</button>
+            <button onclick="orderIngredient('sugar')">Sugar</button>
+            <button onclick="orderIngredient('oil')">Oil</button>
+            <button onclick="orderIngredient('chicken')">Chicken</button>
+            <button onclick="orderIngredient('pepper')">Pepper</button>
+            <button onclick="orderIngredient('garlic')">Garlic</button>
+            <button onclick="orderIngredient('flour')">Flour</button>
+            <button onclick="orderIngredient('cream')">Cream</button>
         </div>
-        <button onclick="hideOrder()">閉じる</button>
-    </div>
-    <div id="businessScreen">
-        <h1>営業モード</h1>
-        <p>お客さんの注文を満たしてお金を稼ぎましょう。壁のボードを確認してください。</p>
-        <button onclick="startBusiness()">開始</button>
+        <button onclick="hideOrder()">Close</button>
     </div>
     <div id="shopScreen">
-        <h1>ショップ</h1>
+        <h1>Shop</h1>
         <div id="shopList">
-            <button onclick="buyUpgrade('fasterCooking')">調理速度アップ (100円)</button>
-            <button onclick="buyUpgrade('extraPlate')">追加のお皿 (150円)</button>
-            <button onclick="buyUpgrade('oven')">オーブン (200円)</button>
-            <button onclick="buyUpgrade('mixer')">ミキサー (250円)</button>
-            <button onclick="buyUpgrade('pot')">鍋 (150円)</button>
+            <button onclick="buyUpgrade('fasterCooking')">Faster Cooking (100円)</button>
+            <button onclick="buyUpgrade('extraPlate')">Extra Plate (150円)</button>
+            <button onclick="buyUpgrade('oven')">Oven (200円)</button>
         </div>
-        <button onclick="hideShop()">閉じる</button>
+        <button onclick="hideShop()">Close</button>
     </div>
-    <div id="info">料理: なし | 評価: N/A | お金: 0</div>
+    <div id="businessScreen">
+        <h1>Business Mode</h1>
+        <p>お客さんが注文を出します。壁の注文ボードを確認し、料理を作ってください。</p>
+        <button onclick="startBusiness()">Start</button>
+    </div>
+    <div id="info">Dish: None | Score: N/A | Money: 0</div>
     <div id="targetInfo"></div>
     <div id="controls">
-        <button onclick="pickObject()">手に持つ</button>
-        <button onclick="placeObject()">置く</button>
-        <button onclick="useObject()">使う</button>
-        <button onclick="showOrder()">注文</button>
-        <button onclick="showShop()">ショップ</button>
-        <button onclick="serveDish()">出す</button>
+        <button onclick="pickObject()">Pick</button>
+        <button onclick="placeObject()">Place</button>
+        <button onclick="showOrder()">Order</button>
+        <button onclick="showShop()">Shop</button>
+        <button onclick="serveDish()">Serve</button>
     </div>
     <div id="joystick"><div id="joystickKnob"></div></div>
     <div id="crosshair"></div>
 
-    <!-- README向けコメント -->
-    <!--
-    # Cooking Simulator Web - Restaurant Edition
-    GitHubでホスティング可能なレストラン風クッキングシミュレーターです。
-    - ナイフはOBJモデルを使用（`./models/Knife.obj`を配置してください）
-    - サウンドファイルは `./sounds/` に配置（cut.mp3, cook.mp3 など）
-    - その他のオブジェクトはボックス形状で動作
-    - モード: サンドボックス、営業、超自由モード
-    - GitHub Pagesでデプロイ可能
-    -->
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r154/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
-    <script src="https://unpkg.com/three@0.154.0/examples/jsm/loaders/OBJLoader.js"></script>
+    <script src="https://threejs.org/examples/js/loaders/OBJLoader.js"></script>
     <script>
         let gameStarted = false;
         let isNormalMode = true;
@@ -239,10 +205,8 @@
         let currentOrder = null;
         let orderTimer = null;
         let orderBoard = null;
-        let fridgeDoor = null;
-        let fridgeOpen = false;
-        let upgrades = { fasterCooking: false, extraPlate: false, oven: false, mixer: false, pot: false };
-        let cookingSpeed = 2;
+        let upgrades = { fasterCooking: false, extraPlate: false, oven: false };
+        let cookingSpeed = 1.5; // デフォルト調理時間（秒）
         const scene = new THREE.Scene();
         const world = new CANNON.World();
         world.gravity.set(0, -9.82, 0);
@@ -255,8 +219,48 @@
         scene.add(new THREE.DirectionalLight(0xffffff, 1).position.set(5, 10, 5));
         scene.add(new THREE.AmbientLight(0x404040));
 
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(20, 20),
+            new THREE.MeshBasicMaterial({ color: 0x555555 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        scene.add(ground);
+        const groundBody = new CANNON.Body({ mass: 0 });
+        groundBody.addShape(new CANNON.Plane());
+        groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+        world.addBody(groundBody);
+
+        // キッチン環境
+        const wallGeo = new THREE.PlaneGeometry(20, 10);
+        const wallMat = new THREE.MeshBasicMaterial({ color: 0xF5F5F5 });
+        const backWall = new THREE.Mesh(wallGeo, wallMat);
+        backWall.position.set(0, 5, -10);
+        scene.add(backWall);
+        const sideWall = new THREE.Mesh(wallGeo, wallMat);
+        sideWall.position.set(-10, 5, 0);
+        sideWall.rotation.y = Math.PI / 2;
+        scene.add(sideWall);
+
+        const shelfGeo = new THREE.BoxGeometry(10, 0.5, 1);
+        const shelfMat = new THREE.MeshBasicMaterial({ color: 0x8B4513 });
+        const shelf = new THREE.Mesh(shelfGeo, shelfMat);
+        shelf.position.set(0, 3, -9);
+        scene.add(shelf);
+
+        const trashGeo = new THREE.BoxGeometry(1, 1, 1);
+        const trashMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+        const trash = new THREE.Mesh(trashGeo, trashMat);
+        trash.position.set(6, 0.5, -8);
+        scene.add(trash);
+
+        const fridgeGeo = new THREE.BoxGeometry(2, 3, 1);
+        const fridgeMat = new THREE.MeshBasicMaterial({ color: 0xD3D3D3 });
+        const fridge = new THREE.Mesh(fridgeGeo, fridgeMat);
+        fridge.position.set(-6, 1.5, -8);
+        scene.add(fridge);
+
         const objects = [];
-        let dish = "なし";
+        let dish = "None";
         let heldObject = null;
         let score = "N/A";
         let plateContents = [];
@@ -285,81 +289,67 @@
             garlic: { size: [0.3, 0.3, 0.3], name: "ニンニク", color: 0xF5F5DC },
             flour: { size: [0.6, 0.6, 0.6], name: "小麦粉", color: 0xFFF5EE },
             cream: { size: [0.5, 0.7, 0.5], name: "クリーム", color: 0xFFFACD },
-            knife: { size: [0.2, 0.1, 1], name: "包丁", color: 0xCCCCCC },
+            knife: { size: [0.2, 0.1, 1], name: "包丁", color: 0xCCCCCC }, // サイズは物理用に保持
             pan: { size: [2, 0.2, 2], name: "フライパン", color: 0x666666 },
             stove: { size: [2, 0.5, 2], name: "コンロ", color: 0x333333 },
             microwave: { size: [1.5, 1, 1.5], name: "電子レンジ", color: 0xAAAAAA },
             sink: { size: [2, 0.5, 1], name: "シンク", color: 0xB0C4DE },
             counter: { size: [3, 0.5, 1.5], name: "調理台", color: 0x8B5A2B },
             plate: { size: [1.5, 0.1, 1.5], name: "皿", color: 0xFFFFFF },
-            oven: { size: [2, 1.5, 2], name: "オーブン", color: 0x555555 },
-            pot: { size: [1.5, 0.8, 1.5], name: "鍋", color: 0x666666 },
-            mixer: { size: [1, 1, 1], name: "ミキサー", color: 0xAAAAAA },
-            chair: { size: [1, 1, 1], name: "椅子", color: 0x8B4513 },
-            table: { size: [2, 0.5, 2], name: "テーブル", color: 0x8B5A2B }
+            oven: { size: [2, 1.5, 2], name: "オーブン", color: 0x555555 }
         };
 
-        function addObject(x, y, z, type, mass = 1) {
-            console.log(`Adding object: ${type} at (${x}, ${y}, ${z})`);
-            if (type === 'knife') {
-                const loader = new THREE.OBJLoader();
-                loader.load('./models/Knife.obj', (obj) => {
-                    console.log('Knife model loaded successfully');
-                    obj.position.set(x, y, z);
-                    obj.scale.set(1, 1, 1);
-                    scene.add(obj);
-
-                    const body = new CANNON.Body({ mass });
-                    body.addShape(new CANNON.Box(new CANNON.Vec3(0.1, 0.05, 0.5)));
-                    body.position.set(x, y, z);
-                    body.angularDamping = 0.3;
-                    body.linearDamping = 0.3;
-                    world.addBody(body);
-
-                    const object = { mesh: obj, body, type, state: 'raw', name: blockTypes[type].name, cookingTime: 0 };
-                    objects.push(object);
-                }, undefined, (error) => {
-                    console.error('Failed to load Knife.obj:', error);
-                    // フォールバック
-                    const { size, name, color } = blockTypes[type];
-                    const mesh = new THREE.Mesh(
-                        new THREE.BoxGeometry(...size),
-                        new THREE.MeshBasicMaterial({ color: color || 0xFFFFFF })
-                    );
-                    mesh.position.set(x, y, z);
-                    scene.add(mesh);
-
-                    const body = new CANNON.Body({ mass });
-                    body.addShape(new CANNON.Box(new CANNON.Vec3(size[0]/2, size[1]/2, size[2]/2)));
-                    body.position.set(x, y, z);
-                    body.angularDamping = 0.3;
-                    body.linearDamping = 0.3;
-                    world.addBody(body);
-
-                    const obj = { mesh, body, type, state: 'raw', name, cookingTime: 0 };
-                    objects.push(obj);
-                    console.log('Using fallback box for knife');
+        // ナイフの.objモデルを読み込む関数（.mtlなし）
+        function loadKnifeModel(x, y, z, callback) {
+            const objLoader = new THREE.OBJLoader();
+            objLoader.load('models/knife.obj', (object) => {
+                // デフォルトのマテリアルを適用
+                object.traverse((child) => {
+                    if (child.isMesh) {
+                        child.material = new THREE.MeshBasicMaterial({ color: 0xCCCCCC }); // ナイフの色を指定
+                    }
                 });
-            } else {
-                const { size, name, color } = blockTypes[type];
-                const mesh = new THREE.Mesh(
-                    new THREE.BoxGeometry(...size),
-                    new THREE.MeshBasicMaterial({ color: color || 0xFFFFFF })
-                );
-                mesh.position.set(x, y, z);
-                scene.add(mesh);
+                object.position.set(x, y, z);
+                object.scale.set(0.1, 0.1, 0.1); // モデルのサイズに合わせて調整
+                scene.add(object);
 
-                const body = new CANNON.Body({ mass });
-                body.addShape(new CANNON.Box(new CANNON.Vec3(size[0]/2, size[1]/2, size[2]/2)));
+                const body = new CANNON.Body({ mass: 1 });
+                body.addShape(new CANNON.Box(new CANNON.Vec3(0.1, 0.05, 0.5))); // ナイフのサイズに近似
                 body.position.set(x, y, z);
-                body.angularDamping = 0.3;
-                body.linearDamping = 0.3;
                 world.addBody(body);
 
-                const obj = { mesh, body, type, state: 'raw', name, cookingTime: 0 };
+                const obj = { mesh: object, body, type: 'knife', state: 'raw', name: '包丁' };
                 objects.push(obj);
-                return obj;
+                if (callback) callback(obj);
+            }, undefined, (error) => {
+                console.error('Knife model loading error:', error);
+            });
+        }
+
+        function addObject(x, y, z, type, mass = 1) {
+            if (type === 'knife') {
+                loadKnifeModel(x, y, z);
+                return;
             }
+            const { size, name, color } = blockTypes[type];
+            const mesh = new THREE.Mesh(
+                new THREE.BoxGeometry(...size),
+                new THREE.MeshBasicMaterial({ color: color || 0xFFFFFF })
+            );
+            mesh.position.set(x, y, z);
+            scene.add(mesh);
+
+            const body = new CANNON.Body({ mass });
+            body.addShape(new CANNON.Box(new CANNON.Vec3(size[0]/2, size[1]/2, size[2]/2)));
+            body.position.set(x, y, z);
+            world.addBody(body);
+
+            const obj = { mesh, body, type, state: 'raw', name };
+            if (type === 'oven' || type === 'pan' || type === 'stove' || type === 'microwave') {
+                obj.cookingTime = 0;
+            }
+            objects.push(obj);
+            return obj;
         }
 
         function sliceObject(obj) {
@@ -384,103 +374,31 @@
             }
         }
 
-        function mixObject(obj) {
-            const pos = obj.body.position.clone();
-            scene.remove(obj.mesh);
-            world.remove(obj.body);
-
-            const index = objects.indexOf(obj);
-            objects.splice(index, 1);
-
-            const newObj = addObject(pos.x, pos.y, pos.z, obj.type, 0.5);
-            newObj.state = 'mixed';
-            newObj.mesh.material.color.set(0xD3D3D3);
-
-            if (isNormalMode) {
-                addParticleEffect(pos, 0xD3D3D3, 15);
-                playSound('mix');
-            }
-        }
-
         function initScene() {
-            console.log('Initializing scene...');
-            const wallMat = new THREE.MeshBasicMaterial({ color: 0xF5F5F5 });
-            const floorGeo = new THREE.PlaneGeometry(20, 20);
-            const floor = new THREE.Mesh(floorGeo, new THREE.MeshBasicMaterial({ color: 0x777777 }));
-            floor.rotation.x = -Math.PI / 2;
-            scene.add(floor);
+            addObject(2, 2, 0, 'knife');
+            const pan = addObject(-2, 0.5, 0, 'pan', 0);
+            const stove = addObject(-4, 0.5, 2, 'stove', 0);
+            const microwave = addObject(0, 0.5, 4, 'microwave', 0);
+            addObject(4, 0.5, -2, 'sink', 0);
+            addObject(0, 0.5, -4, 'counter', 0);
+            addObject(-4, 0.5, -2, 'plate', 0);
 
-            const backWall = new THREE.Mesh(new THREE.PlaneGeometry(20, 10), wallMat);
-            backWall.position.set(0, 5, -10);
-            scene.add(backWall);
+            const boardGeo = new THREE.PlaneGeometry(4, 2);
+            const boardCanvas = document.createElement('canvas');
+            boardCanvas.width = 512;
+            boardCanvas.height = 256;
+            const boardCtx = boardCanvas.getContext('2d');
+            boardCtx.fillStyle = 'white';
+            boardCtx.fillRect(0, 0, 512, 256);
+            const boardTexture = new THREE.CanvasTexture(boardCanvas);
+            const boardMat = new THREE.MeshBasicMaterial({ map: boardTexture });
+            orderBoard = new THREE.Mesh(boardGeo, boardMat);
+            orderBoard.position.set(0, 7, -9);
+            orderBoard.rotation.x = -Math.PI / 6;
+            scene.add(orderBoard);
 
-            const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(20, 10), wallMat);
-            leftWall.position.set(-10, 5, 0);
-            leftWall.rotation.y = Math.PI / 2;
-            scene.add(leftWall);
-
-            const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(20, 10), wallMat);
-            rightWall.position.set(10, 5, 0);
-            rightWall.rotation.y = -Math.PI / 2;
-            scene.add(rightWall);
-
-            const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), wallMat);
-            ceiling.position.set(0, 10, 0);
-            ceiling.rotation.x = Math.PI;
-            scene.add(ceiling);
-
-            const counterGeo = new THREE.BoxGeometry(10, 1, 1);
-            const counter = new THREE.Mesh(counterGeo, new THREE.MeshBasicMaterial({ color: 0x8B5A2B }));
-            counter.position.set(0, 0.5, 5);
-            scene.add(counter);
-
-            const guestTable = new THREE.Mesh(new THREE.BoxGeometry(3, 0.5, 3), new THREE.MeshBasicMaterial({ color: 0x8B4513 }));
-            guestTable.position.set(5, 0.25, 8);
-            scene.add(guestTable);
-
-            const fridgeBodyGeo = new THREE.BoxGeometry(2, 3, 1);
-            const fridgeMat = new THREE.MeshBasicMaterial({ color: 0xD3D3D3 });
-            const fridgeBody = new THREE.Mesh(fridgeBodyGeo, fridgeMat);
-            fridgeBody.position.set(-6, 1.5, -8);
-            scene.add(fridgeBody);
-
-            fridgeDoor = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 0.2), fridgeMat);
-            fridgeDoor.position.set(-5.5, 1.5, -7.5);
-            scene.add(fridgeDoor);
-
-            if (gameMode === 'sandbox' || gameMode === 'business') {
-                addObject(2, 2, -2, 'knife');
-                addObject(-2, 0.5, -2, 'pan', 0);
-                addObject(-4, 0.5, 0, 'stove', 0);
-                addObject(0, 0.5, 2, 'microwave', 0);
-                addObject(4, 0.5, -4, 'sink', 0);
-                addObject(0, 0.5, -6, 'counter', 0);
-                addObject(-4, 0.5, -4, 'plate', 0);
-                addObject(2, 0.5, 0, 'pot', 0);
-
-                const boardGeo = new THREE.PlaneGeometry(4, 2);
-                const boardCanvas = document.createElement('canvas');
-                boardCanvas.width = 512;
-                boardCanvas.height = 256;
-                const boardCtx = boardCanvas.getContext('2d');
-                boardCtx.fillStyle = 'white';
-                boardCtx.fillRect(0, 0, 512, 256);
-                const boardTexture = new THREE.CanvasTexture(boardCanvas);
-                const boardMat = new THREE.MeshBasicMaterial({ map: boardTexture });
-                orderBoard = new THREE.Mesh(boardGeo, boardMat);
-                orderBoard.position.set(0, 7, -9);
-                orderBoard.rotation.x = -Math.PI / 6;
-                scene.add(orderBoard);
-
-                if (upgrades.oven) addObject(2, 0.75, 2, 'oven', 0);
-                if (upgrades.extraPlate) addObject(-2, 0.5, -4, 'plate', 0);
-                if (upgrades.mixer) addObject(4, 0.5, -2, 'mixer', 0);
-                if (upgrades.pot) addObject(2, 0.5, 0, 'pot', 0);
-            } else if (gameMode === 'superFree') {
-                addObject(0, 0.5, -6, 'counter', 0);
-                addObject(2, 2, -2, 'knife');
-            }
-            console.log('Scene initialized with objects:', objects.length);
+            if (upgrades.oven) addObject(2, 0.75, 2, 'oven', 0);
+            if (upgrades.extraPlate) addObject(-2, 0.5, -2, 'plate', 0);
         }
 
         function addParticleEffect(position, color, count) {
@@ -504,22 +422,17 @@
 
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const sounds = {
-            cut: new Audio('./sounds/cut.mp3'),
-            cook: new Audio('./sounds/cook.mp3'),
-            wash: new Audio('./sounds/wash.mp3'),
-            ambient: new Audio('./sounds/ambient.mp3'),
-            oven: new Audio('./sounds/oven.mp3'),
-            mix: new Audio('./sounds/mix.mp3')
+            cut: new Audio('https://www.soundjay.com/buttons/sounds/button-1.mp3'),
+            cook: new Audio('https://www.soundjay.com/mechanical/sounds/frying-pan-1.mp3'),
+            wash: new Audio('https://www.soundjay.com/nature/sounds/water-splash-1.mp3'),
+            ambient: new Audio('https://www.soundjay.com/ambient/sounds/kitchen-ambience-1.mp3'),
+            oven: new Audio('https://www.soundjay.com/mechanical/sounds/oven-timer-1.mp3')
         };
         sounds.ambient.loop = true;
-
         function playSound(type) {
             if (!isNormalMode) return;
-            const sound = sounds[type];
-            if (sound) {
-                sound.currentTime = 0;
-                sound.play().catch(err => console.warn(`サウンド再生に失敗 (${type}):`, err));
-            }
+            sounds[type].currentTime = 0;
+            sounds[type].play();
         }
 
         camera.position.set(0, 5, 10);
@@ -582,37 +495,6 @@
             heldObject = null;
         }
 
-        function useObject() {
-            if (!gameStarted) return;
-            const direction = new THREE.Vector3();
-            camera.getWorldDirection(direction);
-            raycaster.set(camera.position, direction);
-            const intersects = raycaster.intersectObjects(objects.map(o => o.mesh));
-            if (intersects.length > 0) {
-                const target = objects.find(o => o.mesh === intersects[0].object);
-                if (heldObject && heldObject.type === 'knife' && 
-                    ['carrot', 'tomato', 'meat', 'potato', 'onion', 'fish', 'egg', 'chicken', 'pepper'].includes(target.type) && 
-                    target.state === 'raw') {
-                    const counter = objects.find(o => o.type === 'counter');
-                    const isNearCounter = counter && target.body.position.distanceTo(counter.body.position) < 1.5;
-                    if (isNearCounter) {
-                        sliceObject(target);
-                    }
-                } else if (heldObject && heldObject.type === 'mixer' && 
-                    ['carrot', 'tomato', 'potato', 'egg', 'milk', 'cream'].includes(target.type) && 
-                    target.state !== 'mixed') {
-                    const mixer = objects.find(o => o.type === 'mixer');
-                    const isNearMixer = mixer && target.body.position.distanceTo(mixer.body.position) < 1.5;
-                    if (isNearMixer) {
-                        mixObject(target);
-                    }
-                } else if (!heldObject && target.name === "冷蔵庫" && fridgeDoor) {
-                    fridgeOpen = !fridgeOpen;
-                    fridgeDoor.rotation.y = fridgeOpen ? Math.PI / 2 : 0;
-                }
-            }
-        }
-
         function orderIngredient(type) {
             if (!gameStarted) return;
             const pos = camera.position.clone().add(new THREE.Vector3(0, 2, -2));
@@ -621,15 +503,13 @@
         }
 
         function buyUpgrade(upgrade) {
-            const costs = { fasterCooking: 100, extraPlate: 150, oven: 200, mixer: 250, pot: 150 };
+            const costs = { fasterCooking: 100, extraPlate: 150, oven: 200 };
             if (money >= costs[upgrade] && !upgrades[upgrade]) {
                 money -= costs[upgrade];
                 upgrades[upgrade] = true;
                 if (upgrade === 'fasterCooking') cookingSpeed = 1;
-                else {
-                    const pos = camera.position.clone().add(new THREE.Vector3(0, 2, -2));
-                    addObject(pos.x, pos.y, pos.z, upgrade === 'extraPlate' ? 'plate' : upgrade, 1);
-                }
+                if (upgrade === 'extraPlate') addObject(-2, 0.5, -2, 'plate', 0);
+                if (upgrade === 'oven') addObject(2, 0.75, 2, 'oven', 0);
                 alert(`${upgrade}を購入しました！`);
                 updateInfo();
             } else {
@@ -638,17 +518,20 @@
         }
 
         const recipes = {
-            "チャーハン": { ingredients: ["rice_cooked", "egg_cooked", "salt"], instructions: "米と卵をフライパンで炒め、塩を加える" },
-            "スパゲッティ": { ingredients: ["pasta_cooked", "tomato_cooked", "salt"], instructions: "パスタとトマトを鍋で調理し、塩を加える" },
-            "焼き魚": { ingredients: ["fish_cooked", "salt"], instructions: "魚をオーブンで焼き、塩を加える" },
-            "チーズサンド": { ingredients: ["bread", "cheese"], instructions: "パンとチーズを皿に盛る" },
-            "マッシュポテト": { ingredients: ["potato_cooked", "butter"], instructions: "ジャガイモを鍋で調理し、バターを加える" },
-            "オムレツ": { ingredients: ["egg_cooked", "salt"], instructions: "卵をフライパンで焼き、塩を加える" },
-            "豆腐スープ": { ingredients: ["tofu_washed", "salt"], instructions: "豆腐をシンクで洗い、塩を加える" },
-            "キャロットケーキ": { ingredients: ["carrot_cooked", "sugar", "egg"], instructions: "ニンジン、砂糖、卵をオーブンで焼く" },
-            "チキンカレー": { ingredients: ["chicken_cooked", "onion_cooked", "carrot_cooked", "potato_cooked", "salt"], instructions: "鶏肉、タマネギ、ニンジン、ジャガイモを鍋で調理し、塩を加える" },
-            "ペッパーステーキ": { ingredients: ["meat_cooked", "pepper_cooked", "salt"], instructions: "肉とピーマンをフライパンで焼き、塩を加える" },
-            "ガーリックブレッド": { ingredients: ["bread", "garlic", "butter"], instructions: "パンにニンニクとバターを加える" }
+            "Fried Rice": { ingredients: ["rice_cooked", "egg_cooked", "salt"], instructions: "米と卵を焼いて、塩を加える" },
+            "Spaghetti": { ingredients: ["pasta_cooked", "tomato_cooked", "salt"], instructions: "パスタとトマトを焼いて、塩を加える" },
+            "Grilled Fish": { ingredients: ["fish_cooked", "salt"], instructions: "魚を焼いて、塩を加える" },
+            "Cheese Sandwich": { ingredients: ["bread", "cheese"], instructions: "パンとチーズを皿に盛る" },
+            "Mashed Potato": { ingredients: ["potato_cooked", "butter"], instructions: "ジャガイモを焼いて、バターを加える" },
+            "Omelette": { ingredients: ["egg_cooked", "salt"], instructions: "卵を焼いて、塩を加える" },
+            "Tofu Soup": { ingredients: ["tofu_washed", "salt"], instructions: "豆腐を洗って、塩を加える" },
+            "Carrot Cake": { ingredients: ["carrot_cooked", "sugar", "egg"], instructions: "ニンジンを焼いて、砂糖と卵を加える" },
+            "Chicken Curry": { ingredients: ["chicken_cooked", "onion_cooked", "carrot_cooked", "potato_cooked", "salt"], instructions: "鶏肉、玉ねぎ、ニンジン、ジャガイモを焼いて、塩を加える" },
+            "Pepper Steak": { ingredients: ["meat_cooked", "pepper_cooked", "salt"], instructions: "肉とピーマンを焼いて、塩を加える" },
+            "Garlic Bread": { ingredients: ["bread", "garlic", "butter"], instructions: "パンにニンニクとバターを加える" },
+            "Creamy Pasta": { ingredients: ["pasta_cooked", "cream", "cheese"], instructions: "パスタを焼いて、クリームとチーズを加える" },
+            "Fish Soup": { ingredients: ["fish_cooked", "milk", "salt"], instructions: "魚を焼いて、牛乳と塩を加える" },
+            "Detergent Disaster": { ingredients: ["detergent"], instructions: "洗剤をそのまま皿に盛る" }
         };
 
         function generateOrder() {
@@ -693,7 +576,7 @@
             let baseScore = 0;
 
             const contentsTypes = plateContents.map(item => item.type + (item.state !== 'raw' ? `_${item.state}` : ''));
-            if (gameMode === 'sandbox' || gameMode === 'business') {
+            if (gameMode === 'sandbox') {
                 for (const [name, recipe] of Object.entries(recipes)) {
                     if (recipe.ingredients.every(ing => contentsTypes.includes(ing))) {
                         dishName = name;
@@ -703,75 +586,83 @@
                 }
                 if (dishName === "謎の料理") {
                     baseScore = contentsTypes.includes('detergent') ? 1 : Math.min(3, plateContents.length);
-                    dishName = contentsTypes.map(t => blockTypes[t.split('_')[0]].name).join("＋") + "ミックス";
+                    dishName = contentsTypes.map(t => blockTypes[t.split('_')[0]].name).join("と") + "の創作料理";
                 }
                 score = Math.max(1, Math.min(5, Math.floor(baseScore + Math.random() * 2)));
-                money += gameMode === 'business' && currentOrder && currentOrder.name === dishName ? 50 : score * 10;
-                alert(`料理: ${dishName}\nお客さんの評価: ${score}/5\n報酬: ${gameMode === 'business' && currentOrder && currentOrder.name === dishName ? 50 : score * 10}円`);
-                if (gameMode === 'business' && currentOrder && currentOrder.name === dishName) {
+                alert(`料理: ${dishName}\nお客さんの評価: ${score}/5`);
+            } else if (gameMode === 'business' && currentOrder) {
+                if (currentOrder.ingredients.every(ing => contentsTypes.includes(ing))) {
+                    dishName = currentOrder.name;
+                    money += 50;
+                    alert(`注文成功！${dishName}を渡しました。\n報酬: 50円\n現在の所持金: ${money}円`);
                     clearInterval(orderTimer);
                     generateOrder();
-                }
-            } else if (gameMode === 'superFree') {
-                baseScore = plateContents.length;
-                if (contentsTypes.some(t => t.includes('cooked'))) baseScore += 2;
-                if (contentsTypes.some(t => t.includes('mixed'))) baseScore += 1;
-                if (contentsTypes.some(t => t.includes('burnt'))) {
-                    baseScore -= 2;
-                    dishName += "（焦げ）";
-                }
-                if (contentsTypes.includes('detergent')) {
-                    explodePlate();
+                } else {
+                    alert("注文と一致しません！注文ボードを確認してください。");
                     return;
                 }
-                dishName = contentsTypes.map(t => blockTypes[t.split('_')[0]].name).join("＋") + "創作";
-                score = Math.max(1, Math.min(5, Math.floor(baseScore + Math.random() * 2)));
-                money += score * 5;
-                alert(`料理: ${dishName}\n評価: ${score}/5\nお金: +${score * 5}円`);
             }
-            dish = "なし";
+            dish = "None";
             plateContents = [];
             updateInfo();
         }
 
-        function explodePlate() {
-            plateContents.forEach(obj => {
-                obj.body.velocity.set((Math.random() - 0.5) * 10, 5, (Math.random() - 0.5) * 10);
-            });
-            plateContents = [];
-            dish = "なし";
-            if (isNormalMode) {
-                addParticleEffect({ x: 0, y: 0.5, z: 0 }, 0xFF0000, 20);
-                playSound('cut');
-            }
-            alert("洗剤で爆発！皿が飛び散りました！");
-        }
-
         function checkCooking() {
-            const cookingTools = objects.filter(o => ['pan', 'stove', 'microwave', 'oven', 'pot', 'sink'].includes(o.type));
-            objects.forEach(obj => {
-                if (!['cut', 'raw'].includes(obj.state)) return;
-
-                cookingTools.forEach(tool => {
-                    const distance = obj.body.position.distanceTo(tool.body.position);
-                    if (distance < 1.5) {
-                        obj.cookingTime = (obj.cookingTime || 0) + (1 / 60);
-                        if (obj.cookingTime >= cookingSpeed && obj.cookingTime < cookingSpeed * 2) {
-                            obj.mesh.material.color.set(0x8B4513);
-                            obj.state = 'cooked';
-                            if (isNormalMode) {
-                                addParticleEffect(obj.body.position, 0xFFA500, 10);
-                                playSound(tool.type === 'oven' ? 'oven' : 'cook');
-                            }
-                        } else if (obj.cookingTime >= cookingSpeed * 2) {
-                            obj.mesh.material.color.set(0x333333);
-                            obj.state = 'burnt';
-                            if (isNormalMode) addParticleEffect(obj.body.position, 0x000000, 15);
-                        }
+            if (heldObject && heldObject.type === 'knife') {
+                objects.forEach(obj => {
+                    if (['carrot', 'tomato', 'meat', 'potato', 'onion', 'fish', 'egg', 'chicken', 'pepper'].includes(obj.type) &&
+                        obj.body.position.distanceTo(heldObject.body.position) < 1.5 && obj.state === 'raw') {
+                        sliceObject(obj);
                     }
                 });
+            }
 
+            objects.forEach(obj => {
+                const pan = objects.find(o => o.type === 'pan');
+                const stove = objects.find(o => o.type === 'stove');
+                const microwave = objects.find(o => o.type === 'microwave');
+                const oven = objects.find(o => o.type === 'oven');
+                const sink = objects.find(o => o.type === 'sink');
+                const counter = objects.find(o => o.type === 'counter');
                 const plate = objects.find(o => o.type === 'plate');
+
+                if ((pan || stove || oven) && ['cut', 'raw'].includes(obj.state) && 
+                    (obj.body.position.distanceTo(pan?.body.position || stove?.body.position || oven?.body.position) < 1.5)) {
+                    obj.cookingTime = (obj.cookingTime || 0) + (1 / 60);
+                    if (obj.cookingTime >= cookingSpeed) {
+                        obj.mesh.material.color.set(0x8B4513);
+                        obj.state = 'cooked';
+                        obj.cookingTime = 0;
+                        if (isNormalMode) {
+                            addParticleEffect(obj.body.position, 0xFFA500, 10);
+                            playSound(oven && obj.body.position.distanceTo(oven.body.position) < 1.5 ? 'oven' : 'cook');
+                        }
+                    }
+                }
+                if (microwave && ['cut', 'raw'].includes(obj.state) && 
+                    obj.body.position.distanceTo(microwave.body.position) < 1.5) {
+                    obj.cookingTime = (obj.cookingTime || 0) + (1 / 60);
+                    if (obj.cookingTime >= cookingSpeed) {
+                        obj.mesh.material.color.set(0xCD853F);
+                        obj.state = 'cooked';
+                        obj.cookingTime = 0;
+                        if (isNormalMode) {
+                            addParticleEffect(obj.body.position, 0xFFFF00, 5);
+                        }
+                    }
+                }
+                if (sink && obj.body.position.distanceTo(sink.body.position) < 1.5) {
+                    obj.cookingTime = (obj.cookingTime || 0) + (1 / 60);
+                    if (obj.cookingTime >= cookingSpeed) {
+                        obj.mesh.material.color.set(0xADD8E6);
+                        obj.state = 'washed';
+                        obj.cookingTime = 0;
+                        if (isNormalMode) {
+                            addParticleEffect(obj.body.position, 0x00FFFF, 15);
+                            playSound('wash');
+                        }
+                    }
+                }
                 if (plate && obj.body.position.distanceTo(plate.body.position) < 1.5 && 
                     !plateContents.includes(obj) && obj.type !== 'plate') {
                     plateContents.push(obj);
@@ -782,7 +673,7 @@
         }
 
         function updateInfo() {
-            document.getElementById('info').textContent = `料理: ${dish} | 評価: ${score} | お金: ${money} | モード: ${gameMode === 'sandbox' ? 'サンドボックス' : gameMode === 'business' ? '営業' : '超自由'} (${isNormalMode ? '通常' : '軽量'})`;
+            document.getElementById('info').textContent = `Dish: ${dish} | Score: ${score} | Money: ${money} | Mode: ${gameMode === 'sandbox' ? 'Sandbox' : 'Business'} (${isNormalMode ? 'Normal' : 'Lite'})`;
         }
 
         document.addEventListener('keydown', (e) => {
@@ -883,18 +774,18 @@
         animate();
 
         function startGame(normalMode, mode) {
-            console.log(`Starting game in ${mode} mode (normal: ${normalMode})`);
             isNormalMode = normalMode;
             gameMode = mode;
-            gameStarted = true;
-            document.getElementById('startScreen').style.display = 'none';
             if (mode === 'business') {
+                document.getElementById('startScreen').style.display = 'none';
                 document.getElementById('businessScreen').style.display = 'flex';
             } else {
+                gameStarted = true;
+                document.getElementById('startScreen').style.display = 'none';
                 document.getElementById('controls').style.display = 'block';
                 joystick.style.display = 'block';
                 initScene();
-                if (isNormalMode) playSound('ambient');
+                if (isNormalMode) sounds.ambient.play();
                 updateInfo();
             }
         }
@@ -905,7 +796,7 @@
             document.getElementById('controls').style.display = 'block';
             joystick.style.display = 'block';
             initScene();
-            if (isNormalMode) playSound('ambient');
+            if (isNormalMode) sounds.ambient.play();
             generateOrder();
             updateInfo();
         }
