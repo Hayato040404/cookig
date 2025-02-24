@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>クッキングシミュレーターWeb - レストラン版</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Arial', sans-serif; }
+        canvas { width: 100%; height: 100%; }
+        #startScreen, #helpScreen, #orderScreen, #businessScreen, #shopScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+        }
+        #helpScreen, #orderScreen, #businessScreen, #shopScreen { display: none; }
+        #orderList, #shopList {
+            max-height: 70vh;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            -webkit-overflow-scrolling: touch;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        #targetInfo {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -60%);
+            color: #fff;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px;
+            border-radius: 3px;
+            font-size: 18px;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: none;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #joystick {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            display: none;
+            touch-action: none;
+        }
+        #joystickKnob {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: white;
+        }
+        #crosshair::before { width: 2px; height: 20px; left: 9px; }
+        #crosshair::after { width: 20px; height: 2px; top: 9px; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            background: #4a4a4a;
+            color: white;
+            border: 2px solid #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            min-width: 120px;
+            transition: background 0.3s;
+        }
+        button:hover { background: #6a6a6a; }
+    </style>
+</head>
+<body>
+    <div id="startScreen">
+        <h1>クッキングシミュレーターWeb - レストラン版</h1>
+        <button onclick="startGame(true, 'sandbox')">サンドボックス (通常)</button>
+        <button onclick="startGame(false, 'sandbox')">サンドボックス (軽量)</button>
+        <button onclick="startGame(true, 'business')">営業 (通常)</button>
+        <button onclick="startGame(false, 'business')">営業 (軽量)</button>
+        <button onclick="startGame(true, 'superFree')">超自由モード (通常)</button>
+        <button onclick="startGame(false, 'superFree')">超自由モード (軽量)</button>
+        <button onclick="showHelp()">ヘルプ</button>
+    </div>
+    <div id="helpScreen">
+        <h1>ヘルプ</h1>
+        <p><b>操作方法:</b></p>
+        <p>PC: WASDで移動、マウスで視点変更、ボタンで操作</p>
+        <p>モバイル: ジョイスティックで移動、スワイプで視点変更、ボタンで操作</p>
+        <p><b>共通の調理方法:</b></p>
+        <p>1. "注文"で食材や器具を注文します</p>
+        <p>2. "手に持つ"で選び、"置く"で配置します</p>
+        <p>3. "使う"で調理:</p>
+        <p>   - ナイフ: 調理台の食材を切ります</p>
+        <p>   - ミキサー: 食材を混ぜます</p>
+        <p>   - 冷蔵庫: 開閉します</p>
+        <p>4. 調理器具に食材を置くと自動で調理開始（2秒待つ、焦げ注意！）</p>
+        <p>5. "置く"でお皿に盛り付け、"出す"で評価します</p>
+        <p><b>モード:</b></p>
+        <p>サンドボックス: レシピを自由に試せます</p>
+        <p>営業: お客さんの注文を満たしてお金を稼ぎます（3分以内）</p>
+        <p>超自由モード: レストランを自由にカスタマイズ、失敗を楽しめます</p>
+        <p>通常: エフェクトとサウンドあり</p>
+        <p>軽量: エフェクトとサウンドなし</p>
+        <button onclick="hideHelp()">戻る</button>
+    </div>
+    <div id="orderScreen">
+        <h1>食材と器具を注文</h1>
+        <div id="orderList">
+            <button onclick="orderIngredient('carrot')">ニンジン</button>
+            <button onclick="orderIngredient('tomato')">トマト</button>
+            <button onclick="orderIngredient('meat')">肉</button>
+            <button onclick="orderIngredient('potato')">ジャガイモ</button>
+            <button onclick="orderIngredient('onion')">タマネギ</button>
+            <button onclick="orderIngredient('fish')">魚</button>
+            <button onclick="orderIngredient('cheese')">チーズ</button>
+            <button onclick="orderIngredient('bread')">パン</button>
+            <button onclick="orderIngredient('egg')">卵</button>
+            <button onclick="orderIngredient('butter')">バター</button>
+            <button onclick="orderIngredient('salt')">塩</button>
+            <button onclick="orderIngredient('detergent')">洗剤</button>
+            <button onclick="orderIngredient('rice')">米</button>
+            <button onclick="orderIngredient('tofu')">豆腐</button>
+            <button onclick="orderIngredient('pasta')">パスタ</button>
+            <button onclick="orderIngredient('milk')">牛乳</button>
+            <button onclick="orderIngredient('sugar')">砂糖</button>
+            <button onclick="orderIngredient('oil')">油</button>
+            <button onclick="orderIngredient('chicken')">鶏肉</button>
+            <button onclick="orderIngredient('pepper')">ピーマン</button>
+            <button onclick="orderIngredient('garlic')">ニンニク</button>
+            <button onclick="orderIngredient('flour')">小麦粉</button>
+            <button onclick="orderIngredient('cream')">クリーム</button>
+            <button onclick="orderIngredient('knife')">包丁</button>
+            <button onclick="orderIngredient('pan')">フライパン</button>
+            <button onclick="orderIngredient('stove')">コンロ</button>
+            <button onclick="orderIngredient('microwave')">電子レンジ</button>
+            <button onclick="orderIngredient('sink')">シンク</button>
+            <button onclick="orderIngredient('counter')">調理台</button>
+            <button onclick="orderIngredient('plate')">皿</button>
+            <button onclick="orderIngredient('oven')">オーブン</button>
+            <button onclick="orderIngredient('pot')">鍋</button>
+            <button onclick="orderIngredient('mixer')">ミキサー</button>
+            <button onclick="orderIngredient('chair')">椅子</button>
+            <button onclick="orderIngredient('table')">テーブル</button>
+        </div>
+        <button onclick="hideOrder()">閉じる</button>
+    </div>
+    <div id="businessScreen">
+        <h1>営業モード</h1>
+        <p>お客さんの注文を満たしてお金を稼ぎましょう。壁のボードを確認してください。</p>
+        <button onclick="startBusiness()">開始</button>
+    </div>
+    <div id="shopScreen">
+        <h1>ショップ</h1>
+        <div id="shopList">
+            <button onclick="buyUpgrade('fasterCooking')">調理速度アップ (100円)</button>
+            <button onclick="buyUpgrade('extraPlate')">追加のお皿 (150円)</button>
+            <button onclick="buyUpgrade('oven')">オーブン (200円)</button>
+            <button onclick="buyUpgrade('mixer')">ミキサー (250円)</button>
+            <button onclick="buyUpgrade('pot')">鍋 (150円)</button>
+        </div>
+        <button onclick="hideShop()">閉じる</button>
+    </div>
+    <div id="info">料理: なし | 評価: N/A | お金: 0</div>
+    <div id="targetInfo"></div>
+    <div id="controls">
+        <button onclick="pickObject()">手に持つ</button>
+        <button onclick="placeObject()">置く</button>
+        <button onclick="useObject()">使う</button>
+        <button onclick="showOrder()">注文</button>
+        <button onclick="showShop()">ショップ</button>
+        <button onclick="serveDish()">出す</button>
+    </div>
+    <div id="joystick"><div id="joystickKnob"></div></div>
+    <div id="crosshair"></div>
+
+    <!-- README向けコメント -->
+    <!--
+    # Cooking Simulator Web - Restaurant Edition
+    GitHubでホスティング可能なレストラン風クッキングシミュレーターです。
+    - ナイフはOBJモデルを使用（`./models/Knife.obj`を配置してください）
+    - サウンドファイルは `./sounds/` に配置（cut.mp3, cook.mp3 など）
+    - その他のオブジェクトはボックス形状で動作
+    - モード: サンドボックス、営業、超自由モード
+    - GitHub Pagesでデプロイ可能
+    -->
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r154/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <script src="https://unpkg.com/three@0.154.0/examples/jsm/loaders/OBJLoader.js"></script>
+    <script>
+        let gameStarted = false;
+        let isNormalMode = true;
+        let gameMode = 'sandbox';
+        let money = 0;
+        let currentOrder = null;
+        let orderTimer = null;
+        let orderBoard = null;
+        let fridgeDoor = null;
+        let fridgeOpen = false;
+        let upgrades = { fasterCooking: false, extraPlate: false, oven: false, mixer: false, pot: false };
+        let cookingSpeed = 2;
+        const scene = new THREE.Scene();
+        const world = new CANNON.World();
+        world.gravity.set(0, -9.82, 0);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        scene.add(new THREE.DirectionalLight(0xffffff, 1).position.set(5, 10, 5));
+        scene.add(new THREE.AmbientLight(0x404040));
+
+        const objects = [];
+        let dish = "なし";
+        let heldObject = null;
+        let score = "N/A";
+        let plateContents = [];
+
+        const blockTypes = {
+            carrot: { size: [1, 0.5, 0.5], name: "ニンジン", color: 0xFFA500 },
+            tomato: { size: [0.8, 0.8, 0.8], name: "トマト", color: 0xFF0000 },
+            meat: { size: [1, 0.3, 1], name: "肉", color: 0x8B4513 },
+            potato: { size: [0.7, 0.7, 0.7], name: "ジャガイモ", color: 0xD2B48C },
+            onion: { size: [0.9, 0.9, 0.6], name: "タマネギ", color: 0xF5F5DC },
+            fish: { size: [1.2, 0.4, 0.6], name: "魚", color: 0x4682B4 },
+            cheese: { size: [0.8, 0.2, 0.8], name: "チーズ", color: 0xFFFF00 },
+            bread: { size: [1, 0.4, 0.6], name: "パン", color: 0xDAA520 },
+            egg: { size: [0.5, 0.6, 0.5], name: "卵", color: 0xFFFACD },
+            butter: { size: [0.4, 0.2, 0.4], name: "バター", color: 0xFFD700 },
+            salt: { size: [0.3, 0.3, 0.3], name: "塩", color: 0xFFFFFF },
+            detergent: { size: [0.6, 0.8, 0.6], name: "洗剤", color: 0x00FFFF },
+            rice: { size: [0.7, 0.3, 0.7], name: "米", color: 0xF8F8FF },
+            tofu: { size: [0.6, 0.6, 0.6], name: "豆腐", color: 0xF0EDE5 },
+            pasta: { size: [1, 0.2, 0.4], name: "パスタ", color: 0xF5DEB3 },
+            milk: { size: [0.5, 1, 0.5], name: "牛乳", color: 0xFFFFFF },
+            sugar: { size: [0.4, 0.4, 0.4], name: "砂糖", color: 0xFFF8DC },
+            oil: { size: [0.6, 0.8, 0.6], name: "油", color: 0xFFD700 },
+            chicken: { size: [1, 0.5, 0.8], name: "鶏肉", color: 0xFFDAB9 },
+            pepper: { size: [0.5, 0.5, 0.5], name: "ピーマン", color: 0x228B22 },
+            garlic: { size: [0.3, 0.3, 0.3], name: "ニンニク", color: 0xF5F5DC },
+            flour: { size: [0.6, 0.6, 0.6], name: "小麦粉", color: 0xFFF5EE },
+            cream: { size: [0.5, 0.7, 0.5], name: "クリーム", color: 0xFFFACD },
+            knife: { size: [0.2, 0.1, 1], name: "包丁", color: 0xCCCCCC },
+            pan: { size: [2, 0.2, 2], name: "フライパン", color: 0x666666 },
+            stove: { size: [2, 0.5, 2], name: "コンロ", color: 0x333333 },
+            microwave: { size: [1.5, 1, 1.5], name: "電子レンジ", color: 0xAAAAAA },
+            sink: { size: [2, 0.5, 1], name: "シンク", color: 0xB0C4DE },
+            counter: { size: [3, 0.5, 1.5], name: "調理台", color: 0x8B5A2B },
+            plate: { size: [1.5, 0.1, 1.5], name: "皿", color: 0xFFFFFF },
+            oven: { size: [2, 1.5, 2], name: "オーブン", color: 0x555555 },
+            pot: { size: [1.5, 0.8, 1.5], name: "鍋", color: 0x666666 },
+            mixer: { size: [1, 1, 1], name: "ミキサー", color: 0xAAAAAA },
+            chair: { size: [1, 1, 1], name: "椅子", color: 0x8B4513 },
+            table: { size: [2, 0.5, 2], name: "テーブル", color: 0x8B5A2B }
+        };
+
+        function addObject(x, y, z, type, mass = 1) {
+            console.log(`Adding object: ${type} at (${x}, ${y}, ${z})`);
+            if (type === 'knife') {
+                const loader = new THREE.OBJLoader();
+                loader.load('./models/Knife.obj', (obj) => {
+                    console.log('Knife model loaded successfully');
+                    obj.position.set(x, y, z);
+                    obj.scale.set(1, 1, 1);
+                    scene.add(obj);
+
+                    const body = new CANNON.Body({ mass });
+                    body.addShape(new CANNON.Box(new CANNON.Vec3(0.1, 0.05, 0.5)));
+                    body.position.set(x, y, z);
+                    body.angularDamping = 0.3;
+                    body.linearDamping = 0.3;
+                    world.addBody(body);
+
+                    const object = { mesh: obj, body, type, state: 'raw', name: blockTypes[type].name, cookingTime: 0 };
+                    objects.push(object);
+                }, undefined, (error) => {
+                    console.error('Failed to load Knife.obj:', error);
+                    // フォールバック
+                    const { size, name, color } = blockTypes[type];
+                    const mesh = new THREE.Mesh(
+                        new THREE.BoxGeometry(...size),
+                        new THREE.MeshBasicMaterial({ color: color || 0xFFFFFF })
+                    );
+                    mesh.position.set(x, y, z);
+                    scene.add(mesh);
+
+                    const body = new CANNON.Body({ mass });
+                    body.addShape(new CANNON.Box(new CANNON.Vec3(size[0]/2, size[1]/2, size[2]/2)));
+                    body.position.set(x, y, z);
+                    body.angularDamping = 0.3;
+                    body.linearDamping = 0.3;
+                    world.addBody(body);
+
+                    const obj = { mesh, body, type, state: 'raw', name, cookingTime: 0 };
+                    objects.push(obj);
+                    console.log('Using fallback box for knife');
+                });
+            } else {
+                const { size, name, color } = blockTypes[type];
+                const mesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(...size),
+                    new THREE.MeshBasicMaterial({ color: color || 0xFFFFFF })
+                );
+                mesh.position.set(x, y, z);
+                scene.add(mesh);
+
+                const body = new CANNON.Body({ mass });
+                body.addShape(new CANNON.Box(new CANNON.Vec3(size[0]/2, size[1]/2, size[2]/2)));
+                body.position.set(x, y, z);
+                body.angularDamping = 0.3;
+                body.linearDamping = 0.3;
+                world.addBody(body);
+
+                const obj = { mesh, body, type, state: 'raw', name, cookingTime: 0 };
+                objects.push(obj);
+                return obj;
+            }
+        }
+
+        function sliceObject(obj) {
+            const { size } = blockTypes[obj.type];
+            const newSize = [size[0]/2, size[1], size[2]];
+            const pos = obj.body.position.clone();
+            scene.remove(obj.mesh);
+            world.remove(obj.body);
+
+            const index = objects.indexOf(obj);
+            objects.splice(index, 1);
+
+            addObject(pos.x - size[0]/4, pos.y, pos.z, obj.type, 0.5);
+            addObject(pos.x + size[0]/4, pos.y, pos.z, obj.type, 0.5);
+            objects.forEach(o => {
+                if (o.type === obj.type && o.body.position.distanceTo(pos) < 1) o.state = 'cut';
+            });
+
+            if (isNormalMode) {
+                addParticleEffect(pos, 0xFFFFFF, 10);
+                playSound('cut');
+            }
+        }
+
+        function mixObject(obj) {
+            const pos = obj.body.position.clone();
+            scene.remove(obj.mesh);
+            world.remove(obj.body);
+
+            const index = objects.indexOf(obj);
+            objects.splice(index, 1);
+
+            const newObj = addObject(pos.x, pos.y, pos.z, obj.type, 0.5);
+            newObj.state = 'mixed';
+            newObj.mesh.material.color.set(0xD3D3D3);
+
+            if (isNormalMode) {
+                addParticleEffect(pos, 0xD3D3D3, 15);
+                playSound('mix');
+            }
+        }
+
+        function initScene() {
+            console.log('Initializing scene...');
+            const wallMat = new THREE.MeshBasicMaterial({ color: 0xF5F5F5 });
+            const floorGeo = new THREE.PlaneGeometry(20, 20);
+            const floor = new THREE.Mesh(floorGeo, new THREE.MeshBasicMaterial({ color: 0x777777 }));
+            floor.rotation.x = -Math.PI / 2;
+            scene.add(floor);
+
+            const backWall = new THREE.Mesh(new THREE.PlaneGeometry(20, 10), wallMat);
+            backWall.position.set(0, 5, -10);
+            scene.add(backWall);
+
+            const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(20, 10), wallMat);
+            leftWall.position.set(-10, 5, 0);
+            leftWall.rotation.y = Math.PI / 2;
+            scene.add(leftWall);
+
+            const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(20, 10), wallMat);
+            rightWall.position.set(10, 5, 0);
+            rightWall.rotation.y = -Math.PI / 2;
+            scene.add(rightWall);
+
+            const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), wallMat);
+            ceiling.position.set(0, 10, 0);
+            ceiling.rotation.x = Math.PI;
+            scene.add(ceiling);
+
+            const counterGeo = new THREE.BoxGeometry(10, 1, 1);
+            const counter = new THREE.Mesh(counterGeo, new THREE.MeshBasicMaterial({ color: 0x8B5A2B }));
+            counter.position.set(0, 0.5, 5);
+            scene.add(counter);
+
+            const guestTable = new THREE.Mesh(new THREE.BoxGeometry(3, 0.5, 3), new THREE.MeshBasicMaterial({ color: 0x8B4513 }));
+            guestTable.position.set(5, 0.25, 8);
+            scene.add(guestTable);
+
+            const fridgeBodyGeo = new THREE.BoxGeometry(2, 3, 1);
+            const fridgeMat = new THREE.MeshBasicMaterial({ color: 0xD3D3D3 });
+            const fridgeBody = new THREE.Mesh(fridgeBodyGeo, fridgeMat);
+            fridgeBody.position.set(-6, 1.5, -8);
+            scene.add(fridgeBody);
+
+            fridgeDoor = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 0.2), fridgeMat);
+            fridgeDoor.position.set(-5.5, 1.5, -7.5);
+            scene.add(fridgeDoor);
+
+            if (gameMode === 'sandbox' || gameMode === 'business') {
+                addObject(2, 2, -2, 'knife');
+                addObject(-2, 0.5, -2, 'pan', 0);
+                addObject(-4, 0.5, 0, 'stove', 0);
+                addObject(0, 0.5, 2, 'microwave', 0);
+                addObject(4, 0.5, -4, 'sink', 0);
+                addObject(0, 0.5, -6, 'counter', 0);
+                addObject(-4, 0.5, -4, 'plate', 0);
+                addObject(2, 0.5, 0, 'pot', 0);
+
+                const boardGeo = new THREE.PlaneGeometry(4, 2);
+                const boardCanvas = document.createElement('canvas');
+                boardCanvas.width = 512;
+                boardCanvas.height = 256;
+                const boardCtx = boardCanvas.getContext('2d');
+                boardCtx.fillStyle = 'white';
+                boardCtx.fillRect(0, 0, 512, 256);
+                const boardTexture = new THREE.CanvasTexture(boardCanvas);
+                const boardMat = new THREE.MeshBasicMaterial({ map: boardTexture });
+                orderBoard = new THREE.Mesh(boardGeo, boardMat);
+                orderBoard.position.set(0, 7, -9);
+                orderBoard.rotation.x = -Math.PI / 6;
+                scene.add(orderBoard);
+
+                if (upgrades.oven) addObject(2, 0.75, 2, 'oven', 0);
+                if (upgrades.extraPlate) addObject(-2, 0.5, -4, 'plate', 0);
+                if (upgrades.mixer) addObject(4, 0.5, -2, 'mixer', 0);
+                if (upgrades.pot) addObject(2, 0.5, 0, 'pot', 0);
+            } else if (gameMode === 'superFree') {
+                addObject(0, 0.5, -6, 'counter', 0);
+                addObject(2, 2, -2, 'knife');
+            }
+            console.log('Scene initialized with objects:', objects.length);
+        }
+
+        function addParticleEffect(position, color, count) {
+            if (!isNormalMode) return;
+            const particles = new THREE.Group();
+            for (let i = 0; i < count; i++) {
+                const particle = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.05, 8, 8),
+                    new THREE.MeshBasicMaterial({ color })
+                );
+                particle.position.set(
+                    position.x + (Math.random() - 0.5) * 0.5,
+                    position.y + (Math.random() - 0.5) * 0.5,
+                    position.z + (Math.random() - 0.5) * 0.5
+                );
+                particles.add(particle);
+            }
+            scene.add(particles);
+            setTimeout(() => scene.remove(particles), 500);
+        }
+
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const sounds = {
+            cut: new Audio('./sounds/cut.mp3'),
+            cook: new Audio('./sounds/cook.mp3'),
+            wash: new Audio('./sounds/wash.mp3'),
+            ambient: new Audio('./sounds/ambient.mp3'),
+            oven: new Audio('./sounds/oven.mp3'),
+            mix: new Audio('./sounds/mix.mp3')
+        };
+        sounds.ambient.loop = true;
+
+        function playSound(type) {
+            if (!isNormalMode) return;
+            const sound = sounds[type];
+            if (sound) {
+                sound.currentTime = 0;
+                sound.play().catch(err => console.warn(`サウンド再生に失敗 (${type}):`, err));
+            }
+        }
+
+        camera.position.set(0, 5, 10);
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let yaw = 0, pitch = 0, moveSpeed = 0.1, isDragging = false, previousTouch = null;
+        const raycaster = new THREE.Raycaster();
+
+        const joystick = document.getElementById('joystick');
+        const knob = document.getElementById('joystickKnob');
+        let joystickActive = false, joystickOrigin = { x: 0, y: 0 };
+
+        joystick.addEventListener('touchstart', (e) => {
+            joystickActive = true;
+            const touch = e.touches[0];
+            joystickOrigin = { x: touch.clientX, y: touch.clientY };
+        });
+
+        joystick.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (joystickActive) {
+                const touch = e.touches[0];
+                const dx = (touch.clientX - joystickOrigin.x) / 50;
+                const dz = (touch.clientY - joystickOrigin.y) / 50;
+                knob.style.left = `${50 + dx * 30}%`;
+                knob.style.top = `${50 + dz * 30}%`;
+
+                const direction = new THREE.Vector3();
+                camera.getWorldDirection(direction);
+                direction.y = 0;
+                direction.normalize();
+
+                const right = new THREE.Vector3().crossVectors(direction, new THREE.Vector3(0, 1, 0));
+                camera.position.addScaledVector(direction, -dz * moveSpeed);
+                camera.position.addScaledVector(right, dx * moveSpeed);
+            }
+        }, { passive: false });
+
+        joystick.addEventListener('touchend', () => {
+            joystickActive = false;
+            knob.style.left = '50%';
+            knob.style.top = '50%';
+        });
+
+        function pickObject() {
+            if (!gameStarted) return;
+            const direction = new THREE.Vector3();
+            camera.getWorldDirection(direction);
+            raycaster.set(camera.position, direction);
+            const intersects = raycaster.intersectObjects(objects.map(o => o.mesh));
+            if (intersects.length > 0) {
+                heldObject = objects.find(o => o.mesh === intersects[0].object);
+                heldObject.body.mass = 0;
+                heldObject.body.velocity.set(0, 0, 0);
+            }
+        }
+
+        function placeObject() {
+            if (!gameStarted || !heldObject) return;
+            heldObject.body.mass = 1;
+            heldObject = null;
+        }
+
+        function useObject() {
+            if (!gameStarted) return;
+            const direction = new THREE.Vector3();
+            camera.getWorldDirection(direction);
+            raycaster.set(camera.position, direction);
+            const intersects = raycaster.intersectObjects(objects.map(o => o.mesh));
+            if (intersects.length > 0) {
+                const target = objects.find(o => o.mesh === intersects[0].object);
+                if (heldObject && heldObject.type === 'knife' && 
+                    ['carrot', 'tomato', 'meat', 'potato', 'onion', 'fish', 'egg', 'chicken', 'pepper'].includes(target.type) && 
+                    target.state === 'raw') {
+                    const counter = objects.find(o => o.type === 'counter');
+                    const isNearCounter = counter && target.body.position.distanceTo(counter.body.position) < 1.5;
+                    if (isNearCounter) {
+                        sliceObject(target);
+                    }
+                } else if (heldObject && heldObject.type === 'mixer' && 
+                    ['carrot', 'tomato', 'potato', 'egg', 'milk', 'cream'].includes(target.type) && 
+                    target.state !== 'mixed') {
+                    const mixer = objects.find(o => o.type === 'mixer');
+                    const isNearMixer = mixer && target.body.position.distanceTo(mixer.body.position) < 1.5;
+                    if (isNearMixer) {
+                        mixObject(target);
+                    }
+                } else if (!heldObject && target.name === "冷蔵庫" && fridgeDoor) {
+                    fridgeOpen = !fridgeOpen;
+                    fridgeDoor.rotation.y = fridgeOpen ? Math.PI / 2 : 0;
+                }
+            }
+        }
+
+        function orderIngredient(type) {
+            if (!gameStarted) return;
+            const pos = camera.position.clone().add(new THREE.Vector3(0, 2, -2));
+            addObject(pos.x, pos.y, pos.z, type);
+            hideOrder();
+        }
+
+        function buyUpgrade(upgrade) {
+            const costs = { fasterCooking: 100, extraPlate: 150, oven: 200, mixer: 250, pot: 150 };
+            if (money >= costs[upgrade] && !upgrades[upgrade]) {
+                money -= costs[upgrade];
+                upgrades[upgrade] = true;
+                if (upgrade === 'fasterCooking') cookingSpeed = 1;
+                else {
+                    const pos = camera.position.clone().add(new THREE.Vector3(0, 2, -2));
+                    addObject(pos.x, pos.y, pos.z, upgrade === 'extraPlate' ? 'plate' : upgrade, 1);
+                }
+                alert(`${upgrade}を購入しました！`);
+                updateInfo();
+            } else {
+                alert("お金が足りないか、すでに購入済みです。");
+            }
+        }
+
+        const recipes = {
+            "チャーハン": { ingredients: ["rice_cooked", "egg_cooked", "salt"], instructions: "米と卵をフライパンで炒め、塩を加える" },
+            "スパゲッティ": { ingredients: ["pasta_cooked", "tomato_cooked", "salt"], instructions: "パスタとトマトを鍋で調理し、塩を加える" },
+            "焼き魚": { ingredients: ["fish_cooked", "salt"], instructions: "魚をオーブンで焼き、塩を加える" },
+            "チーズサンド": { ingredients: ["bread", "cheese"], instructions: "パンとチーズを皿に盛る" },
+            "マッシュポテト": { ingredients: ["potato_cooked", "butter"], instructions: "ジャガイモを鍋で調理し、バターを加える" },
+            "オムレツ": { ingredients: ["egg_cooked", "salt"], instructions: "卵をフライパンで焼き、塩を加える" },
+            "豆腐スープ": { ingredients: ["tofu_washed", "salt"], instructions: "豆腐をシンクで洗い、塩を加える" },
+            "キャロットケーキ": { ingredients: ["carrot_cooked", "sugar", "egg"], instructions: "ニンジン、砂糖、卵をオーブンで焼く" },
+            "チキンカレー": { ingredients: ["chicken_cooked", "onion_cooked", "carrot_cooked", "potato_cooked", "salt"], instructions: "鶏肉、タマネギ、ニンジン、ジャガイモを鍋で調理し、塩を加える" },
+            "ペッパーステーキ": { ingredients: ["meat_cooked", "pepper_cooked", "salt"], instructions: "肉とピーマンをフライパンで焼き、塩を加える" },
+            "ガーリックブレッド": { ingredients: ["bread", "garlic", "butter"], instructions: "パンにニンニクとバターを加える" }
+        };
+
+        function generateOrder() {
+            const recipeKeys = Object.keys(recipes);
+            const order = recipeKeys[Math.floor(Math.random() * recipeKeys.length)];
+            currentOrder = { name: order, ingredients: recipes[order].ingredients, instructions: recipes[order].instructions };
+            updateOrderBoard();
+            let timeLeft = 180;
+            clearInterval(orderTimer);
+            orderTimer = setInterval(() => {
+                timeLeft--;
+                updateOrderBoard(timeLeft);
+                if (timeLeft <= 0) {
+                    clearInterval(orderTimer);
+                    alert("時間切れ！注文がキャンセルされました。");
+                    currentOrder = null;
+                    orderBoard.material.map.needsUpdate = true;
+                    generateOrder();
+                }
+            }, 1000);
+        }
+
+        function updateOrderBoard(timeLeft = 180) {
+            if (!orderBoard || !currentOrder) return;
+            const canvas = orderBoard.material.map.image;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, 512, 256);
+            ctx.fillStyle = 'black';
+            ctx.font = '40px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`注文: ${currentOrder.name}`, 256, 80);
+            ctx.font = '24px Arial';
+            ctx.fillText(`作り方: ${currentOrder.instructions}`, 256, 140);
+            ctx.fillText(`残り時間: ${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, '0')}`, 256, 200);
+            orderBoard.material.map.needsUpdate = true;
+        }
+
+        function serveDish() {
+            if (plateContents.length === 0) return;
+            let dishName = "謎の料理";
+            let baseScore = 0;
+
+            const contentsTypes = plateContents.map(item => item.type + (item.state !== 'raw' ? `_${item.state}` : ''));
+            if (gameMode === 'sandbox' || gameMode === 'business') {
+                for (const [name, recipe] of Object.entries(recipes)) {
+                    if (recipe.ingredients.every(ing => contentsTypes.includes(ing))) {
+                        dishName = name;
+                        baseScore = 4;
+                        break;
+                    }
+                }
+                if (dishName === "謎の料理") {
+                    baseScore = contentsTypes.includes('detergent') ? 1 : Math.min(3, plateContents.length);
+                    dishName = contentsTypes.map(t => blockTypes[t.split('_')[0]].name).join("＋") + "ミックス";
+                }
+                score = Math.max(1, Math.min(5, Math.floor(baseScore + Math.random() * 2)));
+                money += gameMode === 'business' && currentOrder && currentOrder.name === dishName ? 50 : score * 10;
+                alert(`料理: ${dishName}\nお客さんの評価: ${score}/5\n報酬: ${gameMode === 'business' && currentOrder && currentOrder.name === dishName ? 50 : score * 10}円`);
+                if (gameMode === 'business' && currentOrder && currentOrder.name === dishName) {
+                    clearInterval(orderTimer);
+                    generateOrder();
+                }
+            } else if (gameMode === 'superFree') {
+                baseScore = plateContents.length;
+                if (contentsTypes.some(t => t.includes('cooked'))) baseScore += 2;
+                if (contentsTypes.some(t => t.includes('mixed'))) baseScore += 1;
+                if (contentsTypes.some(t => t.includes('burnt'))) {
+                    baseScore -= 2;
+                    dishName += "（焦げ）";
+                }
+                if (contentsTypes.includes('detergent')) {
+                    explodePlate();
+                    return;
+                }
+                dishName = contentsTypes.map(t => blockTypes[t.split('_')[0]].name).join("＋") + "創作";
+                score = Math.max(1, Math.min(5, Math.floor(baseScore + Math.random() * 2)));
+                money += score * 5;
+                alert(`料理: ${dishName}\n評価: ${score}/5\nお金: +${score * 5}円`);
+            }
+            dish = "なし";
+            plateContents = [];
+            updateInfo();
+        }
+
+        function explodePlate() {
+            plateContents.forEach(obj => {
+                obj.body.velocity.set((Math.random() - 0.5) * 10, 5, (Math.random() - 0.5) * 10);
+            });
+            plateContents = [];
+            dish = "なし";
+            if (isNormalMode) {
+                addParticleEffect({ x: 0, y: 0.5, z: 0 }, 0xFF0000, 20);
+                playSound('cut');
+            }
+            alert("洗剤で爆発！皿が飛び散りました！");
+        }
+
+        function checkCooking() {
+            const cookingTools = objects.filter(o => ['pan', 'stove', 'microwave', 'oven', 'pot', 'sink'].includes(o.type));
+            objects.forEach(obj => {
+                if (!['cut', 'raw'].includes(obj.state)) return;
+
+                cookingTools.forEach(tool => {
+                    const distance = obj.body.position.distanceTo(tool.body.position);
+                    if (distance < 1.5) {
+                        obj.cookingTime = (obj.cookingTime || 0) + (1 / 60);
+                        if (obj.cookingTime >= cookingSpeed && obj.cookingTime < cookingSpeed * 2) {
+                            obj.mesh.material.color.set(0x8B4513);
+                            obj.state = 'cooked';
+                            if (isNormalMode) {
+                                addParticleEffect(obj.body.position, 0xFFA500, 10);
+                                playSound(tool.type === 'oven' ? 'oven' : 'cook');
+                            }
+                        } else if (obj.cookingTime >= cookingSpeed * 2) {
+                            obj.mesh.material.color.set(0x333333);
+                            obj.state = 'burnt';
+                            if (isNormalMode) addParticleEffect(obj.body.position, 0x000000, 15);
+                        }
+                    }
+                });
+
+                const plate = objects.find(o => o.type === 'plate');
+                if (plate && obj.body.position.distanceTo(plate.body.position) < 1.5 && 
+                    !plateContents.includes(obj) && obj.type !== 'plate') {
+                    plateContents.push(obj);
+                    dish = "準備中";
+                    updateInfo();
+                }
+            });
+        }
+
+        function updateInfo() {
+            document.getElementById('info').textContent = `料理: ${dish} | 評価: ${score} | お金: ${money} | モード: ${gameMode === 'sandbox' ? 'サンドボックス' : gameMode === 'business' ? '営業' : '超自由'} (${isNormalMode ? '通常' : '軽量'})`;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (!gameStarted) return;
+            switch (e.key) {
+                case 'w': moveForward = true; break;
+                case 's': moveBackward = true; break;
+                case 'a': moveLeft = true; break;
+                case 'd': moveRight = true; break;
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            switch (e.key) {
+                case 'w': moveForward = false; break;
+                case 's': moveBackward = false; break;
+                case 'a': moveLeft = false; break;
+                case 'd': moveRight = false; break;
+            }
+        });
+
+        document.addEventListener('mousedown', (e) => {
+            if (!gameStarted) return;
+            isDragging = true;
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                yaw -= (e.movementX * 0.002);
+                pitch -= (e.movementY * 0.002);
+                pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+            }
+        });
+        document.addEventListener('mouseup', () => isDragging = false);
+
+        document.addEventListener('touchstart', (e) => {
+            if (!gameStarted) return;
+            isDragging = true;
+            previousTouch = e.touches[0];
+        });
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (isDragging && previousTouch) {
+                const touch = e.touches[0];
+                const deltaX = touch.clientX - previousTouch.clientX;
+                const deltaY = touch.clientY - previousTouch.clientY;
+                yaw -= deltaX * 0.005;
+                pitch -= deltaY * 0.005;
+                pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+                previousTouch = touch;
+            }
+        }, { passive: false });
+        document.addEventListener('touchend', () => {
+            isDragging = false;
+            previousTouch = null;
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (!gameStarted) return;
+
+            world.step(1 / 60);
+
+            const direction = new THREE.Vector3();
+            camera.getWorldDirection(direction);
+            direction.y = 0;
+            direction.normalize();
+
+            if (moveForward) camera.position.addScaledVector(direction, moveSpeed);
+            if (moveBackward) camera.position.addScaledVector(direction, -moveSpeed);
+            if (moveLeft) camera.position.addScaledVector(new THREE.Vector3().crossVectors(direction, new THREE.Vector3(0, 1, 0)), -moveSpeed);
+            if (moveRight) camera.position.addScaledVector(new THREE.Vector3().crossVectors(direction, new THREE.Vector3(0, 1, 0)), moveSpeed);
+
+            camera.rotation.order = 'YXZ';
+            camera.rotation.y = yaw;
+            camera.rotation.x = pitch;
+
+            if (heldObject) {
+                const holdPos = camera.position.clone().add(direction.multiplyScalar(2));
+                heldObject.body.position.set(holdPos.x, holdPos.y, holdPos.z);
+            }
+
+            objects.forEach(obj => {
+                obj.mesh.position.copy(obj.body.position);
+                obj.mesh.quaternion.copy(obj.body.quaternion);
+            });
+
+            raycaster.set(camera.position, camera.getWorldDirection(new THREE.Vector3()));
+            const intersects = raycaster.intersectObjects(objects.map(o => o.mesh));
+            if (intersects.length > 0) {
+                const target = objects.find(o => o.mesh === intersects[0].object);
+                document.getElementById('targetInfo').textContent = `${target.name} (${target.state})`;
+            } else {
+                document.getElementById('targetInfo').textContent = "";
+            }
+
+            checkCooking();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        function startGame(normalMode, mode) {
+            console.log(`Starting game in ${mode} mode (normal: ${normalMode})`);
+            isNormalMode = normalMode;
+            gameMode = mode;
+            gameStarted = true;
+            document.getElementById('startScreen').style.display = 'none';
+            if (mode === 'business') {
+                document.getElementById('businessScreen').style.display = 'flex';
+            } else {
+                document.getElementById('controls').style.display = 'block';
+                joystick.style.display = 'block';
+                initScene();
+                if (isNormalMode) playSound('ambient');
+                updateInfo();
+            }
+        }
+
+        function startBusiness() {
+            gameStarted = true;
+            document.getElementById('businessScreen').style.display = 'none';
+            document.getElementById('controls').style.display = 'block';
+            joystick.style.display = 'block';
+            initScene();
+            if (isNormalMode) playSound('ambient');
+            generateOrder();
+            updateInfo();
+        }
+
+        function showHelp() {
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('helpScreen').style.display = 'flex';
+        }
+
+        function hideHelp() {
+            document.getElementById('helpScreen').style.display = 'none';
+            document.getElementById('startScreen').style.display = 'flex';
+        }
+
+        function showOrder() {
+            document.getElementById('orderScreen').style.display = 'flex';
+        }
+
+        function hideOrder() {
+            document.getElementById('orderScreen').style.display = 'none';
+        }
+
+        function showShop() {
+            document.getElementById('shopScreen').style.display = 'flex';
+        }
+
+        function hideShop() {
+            document.getElementById('shopScreen').style.display = 'none';
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
